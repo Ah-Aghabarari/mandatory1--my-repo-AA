@@ -42,25 +42,61 @@ class Poisson2D:
         #raise NotImplementedError
 
     def D2(self):
+        D2 = sparse.diags([1, -2, 1], np.array([-1, 0, 1]), (self.N+1, self.N+1), 'lil')
+        D2[0, :4] = 2, -5, 4, -1
+        D2[-1, -4:] = -1, 4, -5, 2
+        D2 *= (1/self.h**2)
+        return D2
         """Return second order differentiation matrix"""
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def laplace(self):
+        N = self.N
+        D = self.D2()
+        I = sparse.identity(N + 1, format="csr")
+        L = sparse.kron(I, D, format="csr") + sparse.kron(D, I, format="csr")
+        return L
         """Return vectorized Laplace operator"""
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def get_boundary_indices(self):
+        id = []
+        m = self.N + 1
+        for i in range(m):
+            for j in range(m):
+                if i == 0 or i == self.N or j == 0 or j == self.N:
+                    k = i * m + j  
+                    id.append(k)
+        return np.array(id)
         """Return indices of vectorized matrix that belongs to the boundary"""
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def assemble(self):
+        self._ue = sp.lambdify((x, y), self.ue, "numpy")
+        self._f = sp.lambdify((x, y), self.f, "numpy")
+        A = self.laplace().tolil()
+
+
+        b = self._f(self.xij, self.yij).astype(float).ravel()
+        g = self._ue(self.xij, self.yij).astype(float).ravel()
+
+
+        for k in self.get_boundary_indices():
+            A.rows[k] = [k]
+            A.data[k] = [1.0]
+            b[k] = g[k]
+
+        return A.tocsr(), b.reshape(self.N + 1, self.N + 1)
         """Return assembled matrix A and right hand side vector b"""
         # return A, b
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def l2_error(self, u):
+        Ue = self._ue(self.xij, self.yij).astype(float)
+        err = u - Ue
+        return np.sqrt(np.sum(err ** 2) * self.h ** 2)
         """Return l2-error norm"""
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def __call__(self, N):
         """Solve Poisson's equation.
@@ -119,7 +155,19 @@ class Poisson2D:
         The value of u(x, y)
 
         """
-        raise NotImplementedError
+        i = min(int(np.floor(x / self.h)), self.N - 1)
+        j = min(int(np.floor(y / self.h)), self.N - 1)
+        tx = (x - i * self.h) / self.h
+        ty = (y - j * self.h) / self.h
+        U = self.U
+
+        u_left = U[i, j]
+        u_right = U[i + 1, j]
+        u_top_left = U[i, j + 1]
+        u_top_right = U[i + 1, j + 1]
+
+        return (1 - tx) * (1 - ty) * u_left + tx * (1 - ty) * u_right + (1 - tx) * ty * u_top_left + tx * ty * u_top_right
+        #raise NotImplementedError
 
 def test_convergence_poisson2d():
     # This exact solution is NOT zero on the entire boundary
