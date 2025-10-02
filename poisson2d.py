@@ -5,6 +5,7 @@ import scipy.sparse as sparse
 x, y = sp.symbols('x,y')
 
 class Poisson2D:
+    
     r"""Solve Poisson's equation in 2D::
 
         \nabla^2 u(x, y) = f(x, y), in [0, L]^2
