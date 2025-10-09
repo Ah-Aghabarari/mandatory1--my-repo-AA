@@ -195,8 +195,8 @@ class Wave2D:
 
 class Wave2D_Neumann(Wave2D):
 
+    
     def D2(self, N):
-        def D2(self, N):
         m = self.N + 1
         D2 = sparse.diags([1, -2, 1], [-1, 0, 1], (m, m), 'lil')
         D2[0, :]  = 0.0
